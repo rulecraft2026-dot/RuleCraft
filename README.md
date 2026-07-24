@@ -32,6 +32,10 @@ The current vertical slice:
   DataHub Python SDK;
 - includes an in-memory adapter for infrastructure-free tests and demos.
 
+The reasoning flow and current DataHub SDK emission contract are covered by
+automated tests. End-to-end validation against a live DataHub instance requires
+Docker and is the next integration milestone.
+
 ## Repository structure
 
 ```text
@@ -100,15 +104,15 @@ lineage, runs the agent, and writes these tags to the candidate experiment:
 
 It also updates the candidate dataset description with Markdown findings.
 
-For an authenticated endpoint:
+For an authenticated endpoint on Windows PowerShell:
 
-```bash
-set DATAHUB_GMS_URL=https://your-datahub.example.com
-set DATAHUB_TOKEN=your-token
+```powershell
+$env:DATAHUB_GMS_URL = "https://your-datahub.example.com"
+$env:DATAHUB_TOKEN = "your-token"
 python examples/datahub_writeback.py
 ```
 
-On macOS or Linux, use `export` instead of `set`.
+On macOS or Linux, use `export`.
 
 ## Test
 
@@ -120,12 +124,12 @@ python -m unittest discover -s tests -v
 
 ```text
 ARC experiment JSON
-        │
-        ▼
-ResearchLineageAgent ── compare scores ──► Findings
-        │                                      │
-        ▼                                      ▼
-DataHubContextGraph ── lineage ──► DataHub ── tags + notes
+        |
+        v
+ResearchLineageAgent -- compare scores --> Findings
+        |                                     |
+        v                                     v
+DataHubContextGraph -- lineage --> DataHub -- tags + notes
 ```
 
 `ResearchLineageAgent` depends on a small `ContextGraph` protocol. This keeps
