@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rulecraft"
+version = "0.1.0"
+description = "A DataHub-grounded agent for ARC experiment lineage and regression analysis"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+dependencies = ["acryl-datahub>=1.1.0"]
+
+[project.scripts]
+rulecraft = "arc_lineage_agent.demo:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
