@@ -1,0 +1,29 @@
+{
+  "candidate_solver": "solver-v2",
+  "tags": [
+    "arc-improvement",
+    "arc-regression",
+    "needs-review"
+  ],
+  "findings": [
+    {
+      "task_id": "arc-001",
+      "type": "regression",
+      "delta": -0.5,
+      "summary": "arc-001 regressed by 0.50 between solver-v1 and solver-v2.",
+      "tags": [
+        "arc-regression",
+        "needs-review"
+      ]
+    },
+    {
+      "task_id": "arc-002",
+      "type": "improvement",
+      "delta": 0.5,
+      "summary": "arc-002 improved by 0.50 between solver-v1 and solver-v2.",
+      "tags": [
+        "arc-improvement"
+      ]
+    }
+  ]
+}

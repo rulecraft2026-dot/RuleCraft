@@ -1,0 +1,24 @@
+{
+  "runs": [
+    {
+      "run_id": "baseline",
+      "solver_version": "solver-v1",
+      "hypothesis": "Object-centric decomposition improves compositional tasks.",
+      "task_scores": {
+        "arc-001": 1.0,
+        "arc-002": 0.25,
+        "arc-003": 0.5
+      }
+    },
+    {
+      "run_id": "candidate",
+      "solver_version": "solver-v2",
+      "hypothesis": "Add color normalization before object decomposition.",
+      "task_scores": {
+        "arc-001": 0.5,
+        "arc-002": 0.75,
+        "arc-003": 0.5
+      }
+    }
+  ]
+}
