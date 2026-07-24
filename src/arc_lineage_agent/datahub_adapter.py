@@ -29,6 +29,17 @@ class DataHubContextGraph:
         self.tags: dict[str, set[str]] = defaultdict(set)
         self.notes: dict[str, list[str]] = defaultdict(list)
 
+    def _emit_aspect(self, entity_urn: str, aspect: Any) -> None:
+        """Wrap an aspect using the current DataHub SDK MCP contract."""
+
+        from datahub.emitter.mcp import MetadataChangeProposalWrapper
+
+        proposal = MetadataChangeProposalWrapper(
+            entityUrn=entity_urn,
+            aspect=aspect,
+        )
+        self.emitter.emit_mcp(proposal)
+
     @staticmethod
     def run_urn(run_id: str) -> str:
         from datahub.emitter.mce_builder import make_dataset_urn
@@ -58,11 +69,7 @@ class DataHubContextGraph:
                 "mean_score": f"{self._mean_score(run):.4f}",
             },
         )
-        self.emitter.emit_mcp(
-            entityUrn=self.run_urn(run.run_id),
-            aspectName="datasetProperties",
-            aspect=properties,
-        )
+        self._emit_aspect(self.run_urn(run.run_id), properties)
         self.runs[run.run_id] = run
 
     def get_run(self, run_id: str) -> ExperimentRun:
@@ -90,11 +97,7 @@ class DataHubContextGraph:
                 )
             ]
         )
-        self.emitter.emit_mcp(
-            entityUrn=self.run_urn(candidate.run_id),
-            aspectName="upstreamLineage",
-            aspect=lineage,
-        )
+        self._emit_aspect(self.run_urn(candidate.run_id), lineage)
 
     def write_finding(self, solver_version: str, finding: Finding) -> None:
         """Persist cumulative tags and a Markdown research note."""
@@ -132,12 +135,8 @@ class DataHubContextGraph:
                 "finding_count": str(len(self.notes[solver_version])),
             },
         )
-        self.emitter.emit_mcp(
-            entityUrn=urn, aspectName="globalTags", aspect=tag_aspect
-        )
-        self.emitter.emit_mcp(
-            entityUrn=urn, aspectName="datasetProperties", aspect=note_aspect
-        )
+        self._emit_aspect(urn, tag_aspect)
+        self._emit_aspect(urn, note_aspect)
 
     def close(self) -> None:
         close = getattr(self.emitter, "close", None)
