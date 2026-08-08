@@ -1,0 +1,37 @@
+{
+  "mode": "LIVE_DATAHUB_VERIFIED",
+  "run_at": "2026-08-08T16:02:03.7495139+09:00",
+  "datahub_gms": "http://localhost:8080",
+  "candidate_urn": "urn:li:dataset:(urn:li:dataPlatform:arc,rulecraft.experiment.candidate,PROD)",
+  "metrics": {
+    "entities_inspected": 5,
+    "lineage_edges_traversed": 3,
+    "impacted_assets": 3,
+    "detected_risks": 3,
+    "proposed_remediations": 3,
+    "maximum_risk_score": 95,
+    "release_gate": "blocked",
+    "verification": "PASS",
+    "datahub_write_back": "PASS"
+  },
+  "impacted_assets": [
+    {"name": "ARC Hard Benchmark", "type": "dataset", "owner": "eval-team", "criticality": 3, "depth": 1, "risk_score": 95},
+    {"name": "Research Leaderboard", "type": "dashboard", "owner": "research-ops", "criticality": 2, "depth": 2, "risk_score": 80},
+    {"name": "Solver Production Release", "type": "mlModel", "owner": "ml-platform", "criticality": 3, "depth": 2, "risk_score": 90}
+  ],
+  "remediations": [
+    "Notify eval-team and rerun ARC Hard Benchmark validation",
+    "Notify research-ops and rerun Research Leaderboard validation",
+    "Notify ml-platform and rerun Solver Production Release validation"
+  ],
+  "independent_api_requery": {
+    "decision": "blocked",
+    "max_risk": "95",
+    "impacted_assets": "3",
+    "verification": "pass",
+    "rulecraft_blocked_tag": true,
+    "description_has_remediation": true,
+    "transitive_edges_requeried": 3
+  },
+  "disclosure": "This records the successful live DataHub GMS run and is distinct from the infrastructure-free fixture report."
+}

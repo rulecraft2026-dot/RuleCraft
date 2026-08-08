@@ -27,6 +27,8 @@ This is not an LLM claim or a fabricated benchmark: the gate is deterministic an
 
 ## Demo
 
+**Final Live DataHub demo (2:55):** https://youtu.be/05c3MZno0l0
+
 Python 3.11+:
 
 ```bash
@@ -98,9 +100,9 @@ Generated from `examples/arc_experiment_runs.json` by the current code:
 | Decision | blocked |
 | Max risk | 95/100 |
 | Verification | PASS |
-| Knowledge write-backs | 1 |
+| DataHub write-back | PASS |
 
-Machine-readable evidence: [`examples/blast_radius_report.json`](examples/blast_radius_report.json).
+Machine-readable fixture evidence: [`examples/blast_radius_report.json`](examples/blast_radius_report.json). Live DataHub evidence is preserved separately in [`examples/reports/rulecraft_live_datahub_2026-08-08.json`](examples/reports/rulecraft_live_datahub_2026-08-08.json).
 
 Latency is recorded in each report but intentionally not advertised as a stable benchmark because it varies by machine and excludes network latency in the infrastructure-free demo.
 
@@ -139,9 +141,12 @@ Current suite: 10 passing tests, covering legacy findings, thresholds, duplicate
 
 ## Honest validation status
 
-- The deterministic workflow and DataHub SDK/OpenAPI contracts are covered by tests.
-- A prior DataHub UI demo exists in `outputs/`, but it predates the blast-radius feature.
-- The upgraded live flow requires a running DataHub GMS. It was not re-recorded in the current environment because Docker was unavailable; no in-memory result is labeled as a live DataHub result.
+- The deterministic workflow and DataHub SDK/OpenAPI contracts are covered by 10 passing tests.
+- The signature workflow was rerun end-to-end against a healthy local DataHub Quickstart on 2026-08-08 at 16:02 KST.
+- The successful live run inspected 5 entities, traversed 3 lineage edges, found 3 impacted assets and 3 risks, proposed 3 owner-specific remediations, blocked release at 95/100, passed deterministic verification, and successfully wrote the decision back to DataHub.
+- Write-back was independently requeried through the DataHub API and confirmed in the DataHub UI as `blocked / 95 / 3 / pass`, including the `rulecraft-blocked` tag.
+- The first run encountered normal lineage-index propagation delay and is explicitly excluded from the successful demo metrics. Fixture and in-memory results are never labeled as live evidence.
+- Final video: https://youtu.be/05c3MZno0l0
 
 ## License
 
