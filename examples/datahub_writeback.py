@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-from arc_lineage_agent import DataHubContextGraph, ExperimentRun, ResearchLineageAgent
+from arc_lineage_agent import Asset, DataHubContextGraph, ExperimentRun, ResearchLineageAgent
 
 
 def load_runs(path: Path) -> list[ExperimentRun]:
@@ -34,15 +34,28 @@ def main() -> None:
         for run in runs:
             graph.add_run(run)
         graph.link_runs(runs[0].run_id, runs[1].run_id)
-        findings = ResearchLineageAgent(graph).compare_and_write_back(
+        assets = [
+            Asset(graph.run_urn("arc-hard-benchmark"), "ARC Hard Benchmark", owner="eval-team", criticality=3),
+            Asset(graph.run_urn("solver-production-release"), "Solver Production Release", "mlModel", "ml-platform", 3),
+            Asset(graph.run_urn("research-leaderboard"), "Research Leaderboard", "dashboard", "research-ops", 2),
+        ]
+        for asset in assets:
+            graph.add_asset(asset)
+        graph.link_asset(graph.run_urn(runs[1].run_id), assets[0].urn)
+        graph.link_asset(assets[0].urn, assets[1].urn)
+        graph.link_asset(assets[0].urn, assets[2].urn)
+        report = ResearchLineageAgent(graph).protect_release(
             runs[0].run_id, runs[1].run_id
         )
     finally:
         graph.close()
 
-    print(f"Wrote {len(findings)} findings to DataHub at {server}")
-    for finding in findings:
+    print(f"Wrote {len(report.findings)} findings to DataHub at {server}")
+    for finding in report.findings:
         print(f"- {finding.summary}")
+    print(f"Release gate: {report.decision.status} (risk {report.decision.max_risk}/100)")
+    print(f"DataHub lineage edges traversed: {report.metrics['lineage_edges_traversed']}")
+    print(f"Verification: {'PASS' if report.verification_passed else 'FAIL'}")
 
 
 if __name__ == "__main__":

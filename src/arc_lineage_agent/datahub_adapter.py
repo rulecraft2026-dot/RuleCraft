@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from .models import ExperimentRun, Finding
+from .models import Asset, ExperimentRun, Finding, WorkflowReport
 
 
 class DataHubContextGraph:
@@ -17,17 +17,19 @@ class DataHubContextGraph:
     ) -> None:
         if emitter is None:
             try:
-                from datahub.emitter.rest_emitter import DatahubRestEmitter
+                from datahub.ingestion.graph.client import DataHubGraph
+                from datahub.ingestion.graph.config import DatahubClientConfig
             except ImportError as error:
                 raise RuntimeError(
                     'DataHub support requires: pip install -e ".[datahub]"'
                 ) from error
-            emitter = DatahubRestEmitter(gms_server=server, token=token)
+            emitter = DataHubGraph(DatahubClientConfig(server=server, token=token))
 
         self.emitter = emitter
         self.runs: dict[str, ExperimentRun] = {}
         self.tags: dict[str, set[str]] = defaultdict(set)
         self.notes: dict[str, list[str]] = defaultdict(list)
+        self.decision_reports: dict[str, list[WorkflowReport]] = defaultdict(list)
 
     def _emit_aspect(self, entity_urn: str, aspect: Any) -> None:
         """Wrap an aspect using the current DataHub SDK MCP contract."""
@@ -99,6 +101,38 @@ class DataHubContextGraph:
         )
         self._emit_aspect(self.run_urn(candidate.run_id), lineage)
 
+    def add_asset(self, asset: Asset) -> None:
+        """Seed a reproducible downstream demo asset in DataHub."""
+
+        from datahub.metadata.schema_classes import DatasetPropertiesClass
+
+        self._emit_aspect(
+            asset.urn,
+            DatasetPropertiesClass(
+                name=asset.name,
+                description=f"RuleCraft demo dependency owned by {asset.owner}.",
+                customProperties={
+                    "asset_type": asset.asset_type,
+                    "owner": asset.owner,
+                    "criticality": str(asset.criticality),
+                },
+            ),
+        )
+
+    def link_asset(self, upstream_urn: str, downstream_urn: str) -> None:
+        from datahub.metadata.schema_classes import (
+            DatasetLineageTypeClass,
+            UpstreamClass,
+            UpstreamLineageClass,
+        )
+
+        self._emit_aspect(
+            downstream_urn,
+            UpstreamLineageClass(
+                upstreams=[UpstreamClass(dataset=upstream_urn, type=DatasetLineageTypeClass.TRANSFORMED)]
+            ),
+        )
+
     def write_finding(self, solver_version: str, finding: Finding) -> None:
         """Persist cumulative tags and a Markdown research note."""
 
@@ -137,6 +171,113 @@ class DataHubContextGraph:
         )
         self._emit_aspect(urn, tag_aspect)
         self._emit_aspect(urn, note_aspect)
+
+    def downstream(
+        self, run_id: str, max_depth: int = 4
+    ) -> list[tuple[Asset, int, tuple[str, ...]]]:
+        """Read transitive downstream lineage from DataHub's OpenAPI graph."""
+
+        from datahub.ingestion.graph.openapi import LineageDirection
+
+        start = self.run_urn(run_id)
+        queue: list[tuple[str, int, tuple[str, ...]]] = [(start, 0, (start,))]
+        visited = {start}
+        result: list[tuple[Asset, int, tuple[str, ...]]] = []
+        while queue:
+            current, depth, path = queue.pop(0)
+            if depth >= max_depth:
+                continue
+            scroll_id = None
+            while True:
+                page = self.emitter.scroll_lineage(
+                    urns=[current],
+                    direction=LineageDirection.DOWNSTREAM,
+                    count=100,
+                    scroll_id=scroll_id,
+                )
+                for relationship in page.relationships:
+                    urn = relationship.downstream_urn
+                    if urn in visited or urn == current:
+                        continue
+                    visited.add(urn)
+                    next_path = path + (urn,)
+                    asset = self._read_asset(urn, relationship.destination_entity_type)
+                    result.append((asset, depth + 1, next_path))
+                    queue.append((urn, depth + 1, next_path))
+                scroll_id = getattr(page, "scroll_id", None)
+                if not scroll_id:
+                    break
+        return result
+
+    def write_decision(self, solver_version: str, report: WorkflowReport) -> None:
+        """Remember the safety decision as inspectable DataHub metadata."""
+
+        from datahub.emitter.mce_builder import make_tag_urn
+        from datahub.metadata.schema_classes import (
+            DatasetPropertiesClass,
+            GlobalTagsClass,
+            TagAssociationClass,
+        )
+
+        run = self._run_for_solver(solver_version)
+        self.decision_reports[solver_version].append(report)
+        self.tags[solver_version].add(f"rulecraft-{report.decision.status}")
+        urn = self.run_urn(run.run_id)
+        self._emit_aspect(
+            urn,
+            GlobalTagsClass(
+                tags=[TagAssociationClass(tag=make_tag_urn(tag)) for tag in sorted(self.tags[solver_version])]
+            ),
+        )
+        self._emit_aspect(
+            urn,
+            DatasetPropertiesClass(
+                name=run.run_id,
+                description=(
+                    f"# RuleCraft release memory `{run.run_id}`\n\n"
+                    f"**Decision:** {report.decision.status}\n\n"
+                    f"**Reason:** {report.decision.reason}\n\n"
+                    f"**Verification:** {'PASS' if report.verification_passed else 'FAIL'}\n\n"
+                    "## Remediation\n\n" + "\n".join(f"- {item}" for item in report.remediation)
+                ),
+                customProperties={
+                    "rulecraft_decision": report.decision.status,
+                    "rulecraft_max_risk": str(report.decision.max_risk),
+                    "rulecraft_impacted_assets": str(len(report.impacts)),
+                    "rulecraft_verification": "pass" if report.verification_passed else "fail",
+                },
+            ),
+        )
+
+    def _read_asset(self, urn: str, entity_type: str) -> Asset:
+        """Resolve useful display context while degrading safely on old DataHub servers."""
+
+        name = urn.rsplit(",", 2)[-2] if "," in urn else urn
+        owner = "unassigned"
+        criticality = 1
+        try:
+            from datahub.metadata.schema_classes import DatasetPropertiesClass, GlobalTagsClass
+
+            properties = self.emitter.get_aspect(urn, DatasetPropertiesClass)
+            if properties is not None:
+                if getattr(properties, "name", None):
+                    name = properties.name
+                custom = getattr(properties, "customProperties", {}) or {}
+                owner = custom.get("owner", owner)
+                entity_type = custom.get("asset_type", entity_type)
+                try:
+                    criticality = max(1, min(3, int(custom.get("criticality", criticality))))
+                except (TypeError, ValueError):
+                    pass
+            tags = self.emitter.get_aspect(urn, GlobalTagsClass)
+            tag_names = [tag.tag.lower() for tag in getattr(tags, "tags", [])]
+            if any("critical" in tag or "tier_1" in tag for tag in tag_names):
+                criticality = 3
+            elif any("tier_2" in tag for tag in tag_names):
+                criticality = 2
+        except Exception:
+            pass
+        return Asset(urn=urn, name=name, asset_type=entity_type, owner=owner, criticality=criticality)
 
     def close(self) -> None:
         close = getattr(self.emitter, "close", None)

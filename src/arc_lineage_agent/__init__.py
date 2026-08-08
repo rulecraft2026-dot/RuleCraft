@@ -3,7 +3,7 @@
 from .agent import ResearchLineageAgent
 from .datahub_adapter import DataHubContextGraph
 from .graph import InMemoryContextGraph
-from .models import ExperimentRun, Finding
+from .models import Asset, ExperimentRun, Finding, GateDecision, Impact, WorkflowReport
 
 __all__ = [
     "ExperimentRun",
@@ -11,4 +11,8 @@ __all__ = [
     "DataHubContextGraph",
     "InMemoryContextGraph",
     "ResearchLineageAgent",
+    "Asset",
+    "Impact",
+    "GateDecision",
+    "WorkflowReport",
 ]

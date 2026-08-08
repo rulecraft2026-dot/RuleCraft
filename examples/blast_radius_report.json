@@ -1,0 +1,92 @@
+{
+  "candidate_solver": "solver-v2",
+  "tags": [
+    "arc-improvement",
+    "arc-regression",
+    "needs-review",
+    "rulecraft-blocked"
+  ],
+  "findings": [
+    {
+      "task_id": "arc-001",
+      "type": "regression",
+      "delta": -0.5,
+      "summary": "arc-001 regressed by 0.50 between solver-v1 and solver-v2.",
+      "tags": [
+        "arc-regression",
+        "needs-review"
+      ]
+    },
+    {
+      "task_id": "arc-002",
+      "type": "improvement",
+      "delta": 0.5,
+      "summary": "arc-002 improved by 0.50 between solver-v1 and solver-v2.",
+      "tags": [
+        "arc-improvement"
+      ]
+    }
+  ],
+  "signature_feature": "Counterfactual Experiment Blast-Radius Gate",
+  "decision": {
+    "status": "blocked",
+    "reason": "Critical downstream assets inherit a measured regression.",
+    "max_risk": 95
+  },
+  "impacts": [
+    {
+      "urn": "benchmark:arc-hard",
+      "name": "ARC Hard Benchmark",
+      "type": "dataset",
+      "owner": "eval-team",
+      "depth": 1,
+      "risk_score": 95,
+      "path": [
+        "candidate",
+        "benchmark:arc-hard"
+      ]
+    },
+    {
+      "urn": "dashboard:leaderboard",
+      "name": "Research Leaderboard",
+      "type": "dashboard",
+      "owner": "research-ops",
+      "depth": 2,
+      "risk_score": 80,
+      "path": [
+        "candidate",
+        "benchmark:arc-hard",
+        "dashboard:leaderboard"
+      ]
+    },
+    {
+      "urn": "model:solver-release",
+      "name": "Solver Production Release",
+      "type": "mlModel",
+      "owner": "ml-platform",
+      "depth": 2,
+      "risk_score": 90,
+      "path": [
+        "candidate",
+        "benchmark:arc-hard",
+        "model:solver-release"
+      ]
+    }
+  ],
+  "remediation": [
+    "Notify eval-team and rerun ARC Hard Benchmark validation",
+    "Notify research-ops and rerun Research Leaderboard validation",
+    "Notify ml-platform and rerun Solver Production Release validation"
+  ],
+  "verification_passed": true,
+  "metrics": {
+    "entities_inspected": 5,
+    "lineage_edges_traversed": 3,
+    "impacted_assets_detected": 3,
+    "risks_detected": 3,
+    "actions_proposed": 3,
+    "actions_executed": 1,
+    "knowledge_written_back": 1,
+    "execution_latency_ms": 0.036
+  }
+}
